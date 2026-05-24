@@ -142,6 +142,28 @@ Emails are automatically bucketed into cleanup categories from Gmail labels and 
 - **OAuth 2.0**: Signup, scan, and action permissions are separated
 - **Least Privilege**: Archive/trash access is requested separately from scan access
 - **Limited Use**: Google API data use is limited to user-facing inbox organization and user-confirmed Gmail actions
+- **Disconnect**: Users can revoke Google access from the app and clear the current session
+
+## Google OAuth Verification
+
+This app touches restricted Gmail scopes, so public launch requires Google OAuth verification. The code is designed for a least-privilege review path:
+
+| User action | Requested access |
+|-------------|------------------|
+| Sign up | `openid`, `userinfo.email`, `userinfo.profile` |
+| Scan inbox | `gmail.metadata` |
+| Archive or trash selected emails | `gmail.modify` |
+
+Keep `gmail.readonly` out of the consent screen unless the product intentionally starts reading message bodies or Gmail snippets.
+
+Before submitting verification:
+
+- Publish and verify the production domain.
+- Confirm `/privacy`, `/terms`, and `/data-deletion` are public.
+- Set `NEXT_PUBLIC_SUPPORT_EMAIL` to a real support email.
+- Explain that Gmail metadata is processed in memory and not persisted to a database.
+- Record a demo video showing login, consent, metadata dashboard population, action consent, action execution, and disconnect/revoke.
+- Add up to 100 test users in Google Cloud while the app is still in Testing mode.
 
 ## 🛠️ API Endpoints
 
