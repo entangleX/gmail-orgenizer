@@ -49,7 +49,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             setUser(result.user);
           }
 
-          if (result.access_type === 'gmail' && result.credentials) {
+          if (['gmail', 'actions'].includes(result.access_type) && result.credentials) {
             authUtils.storeCredentials(result.credentials);
             setGmailConnected(true);
             onLoginSuccess?.();
@@ -57,7 +57,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             return;
           }
 
-          setStatus('Account created. Connect Gmail when you are ready to scan your inbox.');
+          setStatus('Account created. Connect Gmail metadata when you are ready to scan your inbox.');
           window.history.replaceState({}, '', '/');
         } catch (error) {
           console.error('Callback handling failed:', error);
@@ -71,10 +71,10 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
     handleCallback();
   }, [onLoginSuccess]);
 
-  const startOAuth = async (access: 'profile' | 'gmail') => {
+  const startOAuth = async (access: 'profile' | 'gmail' | 'actions') => {
     try {
       setLoading(true);
-      setStatus(access === 'profile' ? 'Opening Google signup...' : 'Opening Gmail connection...');
+      setStatus(access === 'profile' ? 'Opening Google signup...' : 'Opening Gmail metadata connection...');
       const { auth_url, state, access_type } = await authAPI.getLoginUrl(access);
       authUtils.storeOAuthState(state, access_type);
       
@@ -95,21 +95,21 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
       <div className={styles.card}>
         <h1 className={styles.title}>Gmail Organizer</h1>
         <p className={styles.subtitle}>
-          {user ? `Welcome${user.name ? `, ${user.name}` : ''}` : 'Create your account first. Connect Gmail only when ready.'}
+          {user ? `Welcome${user.name ? `, ${user.name}` : ''}` : 'Create your account first. Connect Gmail metadata only when ready.'}
         </p>
         
         <div className={styles.features}>
           <div className={styles.feature}>
             <span className={styles.icon}>📧</span>
-            <p>Automatically organize your emails</p>
+            <p>Organize using Gmail metadata, labels, and headers</p>
           </div>
           <div className={styles.feature}>
             <span className={styles.icon}>🗑️</span>
-            <p>Bulk delete promotions & spam</p>
+            <p>Request archive/trash permission only when needed</p>
           </div>
           <div className={styles.feature}>
             <span className={styles.icon}>🔒</span>
-            <p>Your data stays private - no storage</p>
+            <p>No message bodies or attachments are fetched for scanning</p>
           </div>
         </div>
 
@@ -121,7 +121,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
         {user && !gmailConnected && (
           <button onClick={handleConnectGmailClick} className={styles.loginButton} disabled={loading}>
-            {loading ? 'Working...' : 'Connect Gmail'}
+            {loading ? 'Working...' : 'Connect Gmail metadata'}
           </button>
         )}
 
@@ -134,7 +134,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
         {status && <p className={styles.status}>{status}</p>}
 
         <p className={styles.privacyNote}>
-          Signup uses basic profile access. Gmail access is requested separately because it requires Google verification for public launch.
+          Signup uses basic profile access. Gmail scan uses metadata-only access. Archive and trash permissions are requested separately.
         </p>
 
         <div className={styles.legalLinks}>

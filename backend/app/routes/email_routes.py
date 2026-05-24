@@ -7,6 +7,11 @@ from app.services.email_bucketer import EmailBucketer
 email_bp = Blueprint('emails', __name__, url_prefix='/api/emails')
 gmail_service = GmailService()
 email_bucketer = EmailBucketer()
+GMAIL_MODIFY_SCOPE = 'https://www.googleapis.com/auth/gmail.modify'
+
+def has_scope(creds_dict, scope):
+    scopes = creds_dict.get('scopes') or []
+    return scope in scopes
 
 @email_bp.route('/fetch', methods=['POST'])
 def fetch_emails():
@@ -64,6 +69,9 @@ def trash_emails():
     
     if not message_ids:
         return jsonify({'error': 'No message IDs provided'}), 400
+
+    if not has_scope(creds_dict, GMAIL_MODIFY_SCOPE):
+        return jsonify({'error': 'Archive and trash require Gmail modify permission'}), 403
     
     try:
         credentials = gmail_service.dict_to_credentials(creds_dict)
@@ -101,6 +109,9 @@ def archive_emails():
     
     if not message_ids:
         return jsonify({'error': 'No message IDs provided'}), 400
+
+    if not has_scope(creds_dict, GMAIL_MODIFY_SCOPE):
+        return jsonify({'error': 'Archive and trash require Gmail modify permission'}), 403
     
     try:
         credentials = gmail_service.dict_to_credentials(creds_dict)

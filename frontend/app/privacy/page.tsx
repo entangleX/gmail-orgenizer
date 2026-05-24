@@ -6,31 +6,35 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'Set NEXT_PUBLIC_SUPPORT_EMAIL before public launch';
+
   return (
     <PolicyPage
       eyebrow="Privacy"
       title="Privacy Policy"
       updated="May 24, 2026"
-      notice="This page is a product-ready starter policy for Google OAuth review. Have counsel review it before public launch."
+      notice="Gmail Organizer is designed for user-directed inbox cleanup. It uses the minimum Google permissions needed for signup, metadata scanning, and optional archive/trash actions."
       sections={[
         {
           title: 'What Gmail Organizer does',
-          body: 'Gmail Organizer helps users scan their Gmail inbox, classify messages into cleanup categories, and perform user-confirmed archive or trash actions.',
+          body: 'Gmail Organizer helps users scan Gmail metadata, classify messages into cleanup categories, and perform user-confirmed archive or trash actions only after the user grants the separate Gmail action permission.',
         },
         {
-          title: 'Information we access',
+          title: 'Google user data we access',
           items: [
-            'Basic Google profile information such as name, email address, and profile image when you sign up.',
-            'Gmail message metadata required to classify and display cleanup suggestions, such as message IDs, senders, subjects, snippets, labels, dates, and attachment presence.',
-            'OAuth tokens needed to connect to Gmail after the user grants permission.',
+            'Signup uses basic Google profile data: name, email address, profile image, and email verification status.',
+            'Gmail scan uses metadata needed to classify cleanup suggestions: message IDs, selected headers, sender domains, subjects, labels, and dates.',
+            'Gmail action access is requested separately and only when a user chooses archive or trash actions.',
+            'We do not fetch Gmail message bodies, Gmail snippets, attachment contents, or attachment file downloads for scanning.',
+            'OAuth tokens are used only to make user-requested Google API calls during the active app session.',
           ],
         },
         {
           title: 'How we use Gmail data',
           items: [
             'To classify emails into cleanup groups such as OTPs, promotions, newsletters, jobs, finance, legal, government/ID, and institutional messages.',
-            'To show previews and counts inside the dashboard so users can decide what to archive or move to trash.',
-            'To perform Gmail actions only after the user explicitly selects emails and confirms the action.',
+            'To show metadata-based counts, tags, and user-visible review rows inside the dashboard.',
+            'To perform Gmail actions only after the user explicitly selects emails, confirms the action, and grants Gmail modify permission.',
           ],
         },
         {
@@ -38,13 +42,18 @@ export default function PrivacyPage() {
           items: [
             'We do not sell Gmail data.',
             'We do not use Gmail data for advertising.',
-            'We do not allow humans to read user Gmail content unless the user asks for support and grants explicit permission.',
+            'We do not use Gmail data to train AI models.',
+            'We do not allow humans to read user Gmail data unless the user asks for support and grants explicit permission.',
             'We do not transfer Gmail data to unrelated third parties.',
           ],
         },
         {
+          title: 'Google API Limited Use',
+          body: 'Gmail Organizer use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.',
+        },
+        {
           title: 'Storage and security',
-          body: 'For production, OAuth tokens must be stored server-side using encryption and access controls. Local development may use browser storage for testing only and should not be treated as production storage.',
+          body: 'The app is designed to avoid storing email content on the backend. OAuth credentials and scan results are kept in browser session storage so they are cleared when the browser session ends. Server code does not persist Gmail scan results, message bodies, snippets, or attachment contents.',
         },
         {
           title: 'Data deletion',
@@ -52,7 +61,7 @@ export default function PrivacyPage() {
         },
         {
           title: 'Contact',
-          body: 'For privacy requests, contact the app owner at the support email configured for this product before production launch.',
+          body: `For privacy requests, contact ${supportEmail}.`,
         },
       ]}
     />

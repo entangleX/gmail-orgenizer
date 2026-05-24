@@ -20,7 +20,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 // Auth API calls
 export const authAPI = {
-  getLoginUrl: async (access: 'profile' | 'gmail' = 'gmail') => {
+  getLoginUrl: async (access: 'profile' | 'gmail' | 'actions' = 'gmail') => {
     const params = new URLSearchParams({ access });
     return request<any>(`/api/auth/login?${params.toString()}`);
   },

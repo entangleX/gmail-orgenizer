@@ -405,6 +405,7 @@
   gap: 10px;
 }
 
+.enableActionsBtn,
 .archiveBtn,
 .trashBtn {
   padding: 10px 16px;
@@ -414,6 +415,16 @@
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.3s;
+}
+
+.enableActionsBtn {
+  background: #172033;
+  color: #ffffff;
+}
+
+.enableActionsBtn:hover:not(:disabled) {
+  background: #26344f;
+  transform: translateY(-2px);
 }
 
 .archiveBtn {
@@ -436,6 +447,7 @@
   transform: translateY(-2px);
 }
 
+.enableActionsBtn:disabled,
 .archiveBtn:disabled,
 .trashBtn:disabled {
   opacity: 0.5;

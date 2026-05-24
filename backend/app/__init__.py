@@ -6,12 +6,22 @@ def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-secret-change-me')
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV') != 'development'
     
     # Enable CORS
     frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+    cors_origins = [
+        origin.strip()
+        for origin in os.getenv('CORS_ORIGINS', frontend_url).split(',')
+        if origin.strip()
+    ]
+    if os.getenv('FLASK_ENV') == 'development':
+        cors_origins.extend(["http://localhost:3000", "http://localhost:5173"])
+
     CORS(app, resources={
         r"/api/*": {
-            "origins": [frontend_url, "http://localhost:3000", "http://localhost:5173"],
+            "origins": cors_origins,
             "methods": ["GET", "POST", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
             "supports_credentials": True

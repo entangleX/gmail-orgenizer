@@ -1,15 +1,15 @@
 # Gmail Organizer - Full Stack Application
 
-A complete, free Gmail optimization tool built with Python backend + React frontend. Automatically organize, classify, and bulk-delete emails without storing user data.
+A Gmail optimization tool built with a Flask backend and Next.js frontend. It classifies inbox metadata into cleanup groups and only requests archive/trash permission when the user chooses an action.
 
 ## 🎯 Features
 
 ✅ **OAuth 2.0 Authentication** - Secure Google login  
-✅ **Smart Email Classification** - AI-powered bucketing into 6 categories  
+✅ **Smart Email Classification** - Metadata-based bucketing into cleanup categories
 ✅ **Bulk Operations** - Delete/archive hundreds of emails at once  
-✅ **Zero Data Storage** - Emails stay in browser, never saved on server  
+✅ **Privacy-first Scan** - No message bodies, snippets, or attachment contents are fetched for scanning
 ✅ **Beautiful Dashboard** - See stats and organize emails visually  
-✅ **Free Stack** - Runs on Vercel/Netlify (frontend) + Heroku/Railway (backend)  
+✅ **Cloud Run Ready** - GitHub Actions deployment to Google Cloud Run
 
 ## 📁 Project Structure
 
@@ -58,12 +58,14 @@ Gmail-Organizer/
 4. Create OAuth Consent Screen:
    - User Type: External
    - Publishing Status: Testing
-   - Scopes: `gmail.readonly`, `gmail.modify`
+   - Signup scopes: `openid`, `userinfo.email`, `userinfo.profile`
+   - Gmail scan scope: `gmail.metadata`
+   - Action scope requested only when needed: `gmail.modify`
    - Add yourself as a test user
 5. Create OAuth Client ID (Web):
    - Authorized redirect URIs:
      - `http://localhost:3000/api/auth/callback` (development)
-     - `https://your-backend.herokuapp.com/api/auth/callback` (production)
+     - `https://your-frontend-cloud-run-url/api/auth/callback` (production)
 6. Copy your **Client ID** and **Client Secret**
 
 ### Step 2: Backend Setup
@@ -99,6 +101,7 @@ cp .env.local.example .env.local
 
 # Update .env.local if needed
 # NEXT_PUBLIC_BACKEND_URL=http://localhost:5001
+# NEXT_PUBLIC_SUPPORT_EMAIL=your-support-email@example.com
 ```
 
 ### Step 4: Run Locally
@@ -122,24 +125,23 @@ Visit http://localhost:3000 and sign in with your Google account!
 
 ## 📊 Email Classification
 
-Emails are automatically bucketed into 6 categories:
+Emails are automatically bucketed into cleanup categories from Gmail labels and selected metadata headers:
 
 | Category | Detection | Use |
 |----------|-----------|-----|
-| **Promotions** | Gmail's CATEGORY_PROMOTIONS label + keywords (sale, discount, offer) | Bulk delete marketing emails |
-| **Social** | CATEGORY_SOCIAL label + keywords (mentioned, tagged) | Social media notifications |
-| **Updates** | CATEGORY_UPDATES label + keywords (notification, reminder) | Newsletters and updates |
-| **Educational** | Keywords (.edu, course, assignment, exam) | School/course emails |
-| **Legal** | Keywords (legal, terms, privacy, agreement) | Terms & policy notices |
-| **Other** | Unclassified | Everything else |
+| **Quick cleanup** | Attachments, promotions, newsletters, OTPs, jobs, spam-like metadata | Fast review and cleanup |
+| **Identity & institutions** | Government/ID, institutional, legal, education metadata | Review carefully |
+| **Review first** | Shopping, receipts, finance, travel metadata | Keep or archive intentionally |
+| **General** | Social, updates, other metadata | Routine inbox cleanup |
 
 ## 🔒 Privacy & Security
 
-- **Zero Backend Storage**: Emails are fetched into browser memory only
-- **No User Data**: We don't store emails, attachments, or metadata
-- **Temporary Data**: All data cleared when you close the browser tab
-- **OAuth 2.0**: Industry-standard secure authentication
-- **Read-Only**: Only reads from Gmail (can be changed in scopes)
+- **Zero Backend Persistence**: Email metadata is processed in memory and not saved to a database
+- **No Message Bodies**: Scan mode uses Gmail metadata only, not message bodies, snippets, or attachment contents
+- **Temporary Scan Data**: Email scan results are kept client-side for the active session
+- **OAuth 2.0**: Signup, scan, and action permissions are separated
+- **Least Privilege**: Archive/trash access is requested separately from scan access
+- **Limited Use**: Google API data use is limited to user-facing inbox organization and user-confirmed Gmail actions
 
 ## 🛠️ API Endpoints
 
@@ -157,27 +159,9 @@ Emails are automatically bucketed into 6 categories:
 
 ## 🚢 Deployment
 
-### Backend Deployment (Heroku/Railway)
+### Google Cloud Run
 
-```bash
-# Using Heroku
-heroku create your-gmail-organizer-backend
-git push heroku main
-
-# Update CORS in .env
-FRONTEND_URL=https://your-frontend.vercel.app
-```
-
-### Frontend Deployment (Vercel/Netlify)
-
-```bash
-# Vercel
-npm install -g vercel
-vercel
-
-# Update environment
-NEXT_PUBLIC_BACKEND_URL=https://your-backend.herokuapp.com
-```
+This repo includes `.github/workflows/deploy-gcp.yml` for Cloud Run deployment. Configure GitHub Actions secrets/variables for the GCP project, Cloud Run service names, production URLs, and `NEXT_PUBLIC_SUPPORT_EMAIL`, then push to `main` or run the workflow manually.
 
 ## 🐛 Troubleshooting
 
@@ -191,8 +175,8 @@ NEXT_PUBLIC_BACKEND_URL=https://your-backend.herokuapp.com
 - Make sure your OAuth app is in "Testing" mode
 
 ### "CORS errors"
-- Backend CORS is configured for `localhost:3000` and `localhost:5173`
-- Update `app/__init__.py` with your production URLs
+- Set `CORS_ORIGINS` to your production frontend origin
+- In development, localhost origins are allowed when `FLASK_ENV=development`
 
 ### "No emails showing"
 - Make sure you added your email as a test user in Google Cloud Console

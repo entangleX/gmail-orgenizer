@@ -27,7 +27,7 @@ class EmailBucketer:
         'other',
     ]
     
-    ATTACHMENT_KEYWORDS = ['invoice attached', 'attached file', 'attachment', 'resume attached']
+    ATTACHMENT_KEYWORDS = ['attachment', 'attached', 'invoice attached', 'attached file', 'resume attached']
     PROMOTIONS_KEYWORDS = ['sale', 'discount', 'offer', 'coupon', 'promo', 'deal', 'save now', 'limited time', 'exclusive', 'shop', 'clearance', 'cashback']
     NEWSLETTER_KEYWORDS = ['newsletter', 'digest', 'weekly update', 'daily update', 'unsubscribe', 'read more', 'top stories']
     OTP_KEYWORDS = ['otp', 'one-time password', 'one time password', 'verification code', 'security code', 'login code', '2fa', 'two-factor']
@@ -69,9 +69,30 @@ class EmailBucketer:
                 return header['value']
         return ''
 
+    @staticmethod
+    def extract_header_value(headers, names):
+        """Extract selected header values without reading message bodies."""
+        if not headers:
+            return ''
+
+        names = {name.lower() for name in names}
+        values = [
+            header.get('value', '')
+            for header in headers.get('headers', [])
+            if header.get('name', '').lower() in names
+        ]
+        return ' '.join(values).lower()
+
     @classmethod
     def has_attachment(cls, payload):
-        """Detect whether the Gmail payload contains an attached file."""
+        """Detect attachments from metadata and header-level MIME signals."""
+        header_values = cls.extract_header_value(
+            payload,
+            ['Content-Type', 'Content-Disposition', 'X-Attachment-Id']
+        )
+        if any(signal in header_values for signal in ['attachment', 'filename=', 'name=', 'multipart/mixed']):
+            return True
+
         parts = list(payload.get('parts', []) or [])
 
         while parts:
@@ -175,17 +196,25 @@ class EmailBucketer:
 
         return sorted(tags)
 
+    @staticmethod
+    def sender_domain(sender):
+        email_part = sender
+        if '<' in sender and '>' in sender:
+            email_part = sender.split('<', 1)[1].split('>', 1)[0]
+        if '@' in email_part:
+            return email_part.split('@')[-1].strip().lower()
+        return ''
+
     @classmethod
-    def result(cls, bucket, reason, email, snippet, subject, sender, sent_at, tags):
+    def result(cls, bucket, reason, email, subject, sender, sent_at, tags):
         age_info = cls.get_age_info(email, sent_at)
         tags = sorted(set(tags + [age_info['age_group']]))
         return {
             'bucket': bucket,
             'reason': reason,
             'email_id': email.get('id'),
-            'snippet': snippet[:180],
             'subject': subject[:140],
-            'sender': sender,
+            'sender': cls.sender_domain(sender),
             'sent_at': sent_at,
             'tags': tags,
             **age_info,
@@ -210,81 +239,84 @@ class EmailBucketer:
         Returns: dict with bucket info
         """
         label_ids = email.get('labelIds', [])
-        snippet = (email.get('snippet', '') or '').lower()
         payload = email.get('payload', {})
         subject = cls.extract_subject_from_headers(payload)
         sender = cls.extract_email_from_headers(payload)
         sent_at = cls.extract_date_from_headers(payload)
         sender_lower = sender.lower()
+        mime_headers = cls.extract_header_value(
+            payload,
+            ['Content-Type', 'Content-Disposition', 'X-Attachment-Id']
+        )
 
-        combined_content = f"{subject} {snippet} {sender_lower}"
+        combined_content = f"{subject} {sender_lower} {mime_headers}"
         has_attachment = cls.has_attachment(payload)
         tags = cls.collect_tags(label_ids, combined_content, has_attachment)
         age_info = cls.get_age_info(email, sent_at)
 
         if has_attachment or cls.match_any(combined_content, cls.ATTACHMENT_KEYWORDS):
-            return cls.result('attachments', 'Attachment detected', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('attachments', 'Attachment metadata', email, subject, sender, sent_at, tags)
 
         if cls.match_any(combined_content, cls.OTP_KEYWORDS):
-            return cls.result('otp_security', 'OTP or security code', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('otp_security', 'OTP or security code', email, subject, sender, sent_at, tags)
 
         if cls.match_any(combined_content, cls.SPAM_JUNK_KEYWORDS):
-            return cls.result('spam_junk', 'Spam-like content', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('spam_junk', 'Spam-like content', email, subject, sender, sent_at, tags)
 
         if cls.match_any(combined_content, cls.JOBS_KEYWORDS):
             bucket = 'latest_jobs' if age_info['age_days'] is not None and age_info['age_days'] <= 30 else 'jobs'
             reason = 'Latest job email' if bucket == 'latest_jobs' else 'Job or recruiter content'
-            return cls.result(bucket, reason, email, snippet, subject, sender, sent_at, tags)
+            return cls.result(bucket, reason, email, subject, sender, sent_at, tags)
 
         if cls.match_any(combined_content, cls.GOVERNMENT_ID_KEYWORDS):
-            return cls.result('government_id', 'Government or ID-related content', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('government_id', 'Government or ID-related metadata', email, subject, sender, sent_at, tags)
 
         if cls.match_any(combined_content, cls.INSTITUTIONAL_KEYWORDS):
-            return cls.result('institutional', 'Institutional content', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('institutional', 'Institutional metadata', email, subject, sender, sent_at, tags)
 
         if cls.match_any(combined_content, cls.SHOPPING_SENDER_KEYWORDS):
-            return cls.result('shopping', 'Shopping content', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('shopping', 'Shopping metadata', email, subject, sender, sent_at, tags)
 
         if cls.match_any(combined_content, cls.SHOPPING_KEYWORDS):
-            return cls.result('shopping_receipts', 'Shopping or receipt content', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('shopping_receipts', 'Shopping or receipt metadata', email, subject, sender, sent_at, tags)
 
         if cls.match_any(combined_content, cls.FINANCE_KEYWORDS):
-            return cls.result('finance', 'Finance content', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('finance', 'Finance metadata', email, subject, sender, sent_at, tags)
 
         if cls.match_any(combined_content, cls.TRAVEL_KEYWORDS):
-            return cls.result('travel', 'Travel content', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('travel', 'Travel metadata', email, subject, sender, sent_at, tags)
         
         # Check Gmail's native categories
         if 'CATEGORY_PROMOTIONS' in label_ids:
-            return cls.result('promotions', 'Gmail category', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('promotions', 'Gmail category', email, subject, sender, sent_at, tags)
         
         if 'CATEGORY_SOCIAL' in label_ids:
-            return cls.result('social', 'Gmail category', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('social', 'Gmail category', email, subject, sender, sent_at, tags)
         
         if 'CATEGORY_UPDATES' in label_ids:
-            return cls.result('updates', 'Gmail category', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('updates', 'Gmail category', email, subject, sender, sent_at, tags)
         
         # Legal/Terms
         if cls.match_any(combined_content, cls.LEGAL_KEYWORDS):
-            return cls.result('legal', 'Content match', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('legal', 'Metadata match', email, subject, sender, sent_at, tags)
         
         # Educational
         if cls.match_any(combined_content, cls.EDUCATIONAL_KEYWORDS):
-            return cls.result('educational', 'Content match', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('educational', 'Metadata match', email, subject, sender, sent_at, tags)
         
         # Promotions (secondary check)
         if cls.match_any(combined_content, cls.PROMOTIONS_KEYWORDS):
-            return cls.result('promotions', 'Content match', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('promotions', 'Metadata match', email, subject, sender, sent_at, tags)
 
         if cls.match_any(combined_content, cls.NEWSLETTER_KEYWORDS):
-            return cls.result('newsletters', 'Newsletter content', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('newsletters', 'Newsletter metadata', email, subject, sender, sent_at, tags)
         
         # Social (secondary check)
         if cls.match_any(combined_content, cls.SOCIAL_KEYWORDS):
-            return cls.result('social', 'Content match', email, snippet, subject, sender, sent_at, tags)
+            return cls.result('social', 'Metadata match', email, subject, sender, sent_at, tags)
         
         # Default: other
-        return cls.result('other', 'Default', email, snippet, subject, sender, sent_at, tags)
+        return cls.result('other', 'Default', email, subject, sender, sent_at, tags)
     
     @classmethod
     def bucket_emails(cls, emails):

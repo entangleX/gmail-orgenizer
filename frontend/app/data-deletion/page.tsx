@@ -6,6 +6,8 @@ export const metadata: Metadata = {
 };
 
 export default function DataDeletionPage() {
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'Set NEXT_PUBLIC_SUPPORT_EMAIL before public launch';
+
   return (
     <PolicyPage
       eyebrow="Data deletion"
@@ -23,15 +25,15 @@ export default function DataDeletionPage() {
         },
         {
           title: 'Delete app data',
-          body: 'For production, users should be able to request deletion of account metadata, stored scan metadata, and encrypted OAuth tokens. Configure a support email before launch and list it here.',
+          body: `Gmail Organizer is designed not to store message bodies, snippets, attachment contents, or scan results on the backend. To request deletion of any account metadata associated with support or production operations, email ${supportEmail}.`,
         },
         {
           title: 'Local browser data',
-          body: 'During local testing, clear browser storage for the app domain or click Logout in the app to remove locally stored credentials and profile data.',
+          body: 'The web app uses browser session storage for profile, OAuth session data, and current scan results. Click Logout or close the browser session to clear active app credentials. You can also clear browser storage for the app domain.',
         },
         {
           title: 'Processing timeline',
-          body: 'Production deletion requests should be processed within a reasonable period and confirmed to the user after completion.',
+          body: 'Deletion requests are reviewed and processed within 30 days unless a longer period is required for security, fraud prevention, or legal obligations. A confirmation is sent after completion.',
         },
       ]}
     />

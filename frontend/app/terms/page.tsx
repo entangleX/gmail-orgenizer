@@ -6,16 +6,17 @@ export const metadata: Metadata = {
 };
 
 export default function TermsPage() {
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'Set NEXT_PUBLIC_SUPPORT_EMAIL before public launch';
+
   return (
     <PolicyPage
       eyebrow="Terms"
       title="Terms of Service"
       updated="May 24, 2026"
-      notice="These terms are a starter template for launch preparation and should be reviewed before public release."
       sections={[
         {
           title: 'Use of the service',
-          body: 'Gmail Organizer is provided to help users review, classify, archive, and move selected Gmail messages to trash. Users are responsible for reviewing selections before confirming actions.',
+          body: 'Gmail Organizer helps users review metadata-based classifications, then archive or move selected Gmail messages to trash after they grant the separate action permission. Users are responsible for reviewing selections before confirming actions.',
         },
         {
           title: 'User responsibilities',
@@ -27,7 +28,11 @@ export default function TermsPage() {
         },
         {
           title: 'Gmail actions',
-          body: 'The app only performs Gmail archive or trash actions after user confirmation. Moving an email to trash may still allow recovery from Gmail Trash for a limited time, depending on Google settings.',
+          body: 'The app scans with Gmail metadata access. It only requests Gmail modify access when a user wants archive or trash actions. Moving an email to trash may still allow recovery from Gmail Trash for a limited time, depending on Google settings.',
+        },
+        {
+          title: 'Privacy and Google data',
+          body: 'Use of Google user data is governed by the Privacy Policy. Gmail Organizer is designed to scan Gmail metadata only and does not fetch message bodies, snippets, or attachment contents for classification.',
         },
         {
           title: 'Service availability',
@@ -39,7 +44,7 @@ export default function TermsPage() {
         },
         {
           title: 'Contact',
-          body: 'Questions about these terms should be sent to the product support contact configured before public launch.',
+          body: `Questions about these terms should be sent to ${supportEmail}.`,
         },
       ]}
     />

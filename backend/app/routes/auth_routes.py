@@ -11,7 +11,7 @@ def login():
     """Get the authorization URL and state for OAuth login."""
     try:
         access_type = request.args.get('access', 'gmail')
-        if access_type not in ['profile', 'gmail']:
+        if access_type not in ['profile', 'gmail', 'actions']:
             return jsonify({'error': 'Invalid access type'}), 400
 
         auth_url, state = gmail_service.get_authorization_url(access_type)
@@ -53,18 +53,15 @@ def callback():
         creds_dict = gmail_service.credentials_to_dict(credentials)
         profile = gmail_service.get_user_profile(credentials)
         
-        if profile:
-            session['user'] = profile
-
-        if access_type == 'gmail':
-            session['credentials'] = creds_dict
+        session.pop('oauth_state', None)
+        session.pop('oauth_access_type', None)
         
         return jsonify({
             'success': True,
             'message': 'Authentication successful',
             'access_type': access_type,
             'user': profile,
-            'credentials': creds_dict if access_type == 'gmail' else None
+            'credentials': creds_dict if access_type in ['gmail', 'actions'] else None
         })
     
     except Exception as e:

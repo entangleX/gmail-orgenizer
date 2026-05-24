@@ -7,7 +7,6 @@ interface Email {
   email_id: string;
   bucket: string;
   subject: string;
-  snippet: string;
   reason: string;
 }
 

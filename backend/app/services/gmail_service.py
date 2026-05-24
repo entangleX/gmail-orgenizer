@@ -11,18 +11,25 @@ from googleapiclient.errors import HttpError
 from datetime import datetime
 
 PROFILE_SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
-GMAIL_SCOPES = [
+GMAIL_METADATA_SCOPES = [
     'openid',
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
-    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.metadata',
+]
+GMAIL_ACTION_SCOPES = [
+    'openid',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'https://www.googleapis.com/auth/gmail.metadata',
     'https://www.googleapis.com/auth/gmail.modify',
 ]
 
 class GmailService:
     def __init__(self):
         self.profile_scopes = PROFILE_SCOPES
-        self.gmail_scopes = GMAIL_SCOPES
+        self.gmail_scopes = GMAIL_METADATA_SCOPES
+        self.action_scopes = GMAIL_ACTION_SCOPES
         self.client_id = os.getenv('GOOGLE_CLIENT_ID')
         self.client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
         self.frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
@@ -35,6 +42,8 @@ class GmailService:
         """Return OAuth scopes for the requested access tier."""
         if access_type == 'profile':
             return self.profile_scopes
+        if access_type == 'actions':
+            return self.action_scopes
         return self.gmail_scopes
 
     def get_auth_flow(self, access_type='gmail'):
@@ -63,7 +72,7 @@ class GmailService:
         auth_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true',
-            prompt='consent' if access_type == 'gmail' else 'select_account'
+            prompt='consent' if access_type in ['gmail', 'actions'] else 'select_account'
         )
         return auth_url, state
     
@@ -75,16 +84,14 @@ class GmailService:
         return credentials
     
     def credentials_to_dict(self, credentials):
-        """Convert credentials object to dictionary for storage."""
+        """Convert credentials object to a browser-safe dictionary."""
         return {
             'token': credentials.token,
             'refresh_token': credentials.refresh_token,
             'token_uri': credentials.token_uri,
-            'client_id': credentials.client_id,
-            'client_secret': credentials.client_secret,
+            'client_id': credentials.client_id or self.client_id,
             'scopes': credentials.scopes,
             'expiry': credentials.expiry.isoformat() if credentials.expiry else None,
-            'id_token': credentials.id_token
         }
 
     def get_user_profile(self, credentials):
@@ -110,8 +117,8 @@ class GmailService:
             token=creds_dict.get('token'),
             refresh_token=creds_dict.get('refresh_token'),
             token_uri=creds_dict.get('token_uri'),
-            client_id=creds_dict.get('client_id'),
-            client_secret=creds_dict.get('client_secret'),
+            client_id=self.client_id,
+            client_secret=self.client_secret,
             scopes=creds_dict.get('scopes')
         )
         expiry = creds_dict.get('expiry')
@@ -147,7 +154,7 @@ class GmailService:
                 results = service.users().messages().list(
                     userId='me',
                     maxResults=min(page_size, target_count - len(messages)),
-                    q='in:inbox',
+                    labelIds=['INBOX'],
                     pageToken=page_token
                 ).execute()
 
@@ -168,8 +175,15 @@ class GmailService:
             message = service.users().messages().get(
                 userId='me',
                 id=message_id,
-                format='full',
-                metadataHeaders=['From', 'Subject', 'Date']
+                format='metadata',
+                metadataHeaders=[
+                    'From',
+                    'Subject',
+                    'Date',
+                    'Content-Type',
+                    'Content-Disposition',
+                    'X-Attachment-Id'
+                ]
             ).execute()
             
             return message

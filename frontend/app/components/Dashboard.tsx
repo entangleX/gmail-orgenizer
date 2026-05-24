@@ -67,6 +67,8 @@ const AGE_FILTERS = [
   ['unknown_age', 'Unknown'],
 ];
 
+const GMAIL_MODIFY_SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
+
 export default function Dashboard() {
   const [credentials, setCredentials] = useState<any>(null);
   const [buckets, setBuckets] = useState<Bucket>({});
@@ -78,6 +80,7 @@ export default function Dashboard() {
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hasActionAccess, setHasActionAccess] = useState(false);
 
   const fetchEmails = useCallback(async (creds: any, limit = scanLimit) => {
     try {
@@ -113,8 +116,23 @@ export default function Dashboard() {
       return;
     }
     setCredentials(creds);
+    setHasActionAccess(authUtils.hasScope(GMAIL_MODIFY_SCOPE));
     fetchEmails(creds, scanLimit);
   }, [fetchEmails, scanLimit]);
+
+  const requestActionAccess = async () => {
+    try {
+      setActionLoading(true);
+      setError('Archive and trash require one extra Gmail permission. Redirecting to Google...');
+      const { auth_url, state, access_type } = await authAPI.getLoginUrl('actions');
+      authUtils.storeOAuthState(state, access_type);
+      window.location.href = auth_url;
+    } catch (error) {
+      console.error('Failed to request action access:', error);
+      setError('Could not request archive/trash permission. Please try again.');
+      setActionLoading(false);
+    }
+  };
 
   const handleSelectEmail = (emailId: string, selected: boolean) => {
     const newSelected = new Set(selectedEmails);
@@ -160,6 +178,11 @@ export default function Dashboard() {
       return;
     }
 
+    if (!hasActionAccess) {
+      await requestActionAccess();
+      return;
+    }
+
     if (!confirm(`Delete ${selectedEmails.size} emails?`)) {
       return;
     }
@@ -185,6 +208,11 @@ export default function Dashboard() {
   const handleArchiveSelected = async () => {
     if (selectedEmails.size === 0) {
       setError('Select at least one email first.');
+      return;
+    }
+
+    if (!hasActionAccess) {
+      await requestActionAccess();
       return;
     }
 
@@ -303,12 +331,12 @@ export default function Dashboard() {
 
           <div className={styles.commandBar}>
             <div>
-              <p className={styles.eyebrow}>Scanned set</p>
+              <p className={styles.eyebrow}>Metadata scan</p>
               <h2 className={styles.panelTitle}>{stats.total_emails || 0} emails analyzed</h2>
               {stats.scan_complete_mode ? (
-                <p className={styles.panelHint}>Complete mode scans every inbox page up to the configured safety limit.</p>
+                <p className={styles.panelHint}>Complete mode scans Gmail metadata only: labels, selected headers, IDs, and dates. No bodies or attachments are fetched.</p>
               ) : (
-                <p className={styles.panelHint}>Limited mode is faster. Use complete mode for deep cleanup sessions.</p>
+                <p className={styles.panelHint}>Limited mode is faster. Scans use metadata only; archive/trash permission is requested separately.</p>
               )}
             </div>
             <div className={styles.metricStrip}>
@@ -428,6 +456,15 @@ export default function Dashboard() {
                   </label>
                   
                   <div className={styles.actionButtons}>
+                    {!hasActionAccess && (
+                      <button
+                        onClick={requestActionAccess}
+                        disabled={actionLoading}
+                        className={styles.enableActionsBtn}
+                      >
+                        Enable actions
+                      </button>
+                    )}
                     <button
                       onClick={handleArchiveSelected}
                       disabled={selectedEmails.size === 0 || actionLoading}

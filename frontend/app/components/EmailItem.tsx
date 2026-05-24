@@ -6,7 +6,6 @@ interface Email {
   email_id: string;
   bucket: string;
   subject: string;
-  snippet: string;
   reason: string;
   sender?: string;
   sent_at?: string;
@@ -65,8 +64,7 @@ export default function EmailItem({ email, selected, onSelect }: EmailItemProps)
             {email.bucket}
           </span>
         </div>
-        {email.sender && <p className={styles.sender}>{email.sender}</p>}
-        <p className={styles.snippet}>{email.snippet}</p>
+        {email.sender && <p className={styles.sender}>Sender domain: {email.sender}</p>}
         {(email.age_label || email.tags?.length) && (
           <div className={styles.tags}>
             {email.age_label && <span className={styles.ageTag}>{email.age_label}</span>}
