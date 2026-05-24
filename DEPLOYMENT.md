@@ -7,6 +7,7 @@ This app is set up to deploy the Next.js frontend and Flask backend to Google Cl
 Create these once:
 
 - Google Cloud project
+  - Project ID: `project-0febde82-373f-4319-84d`
 - Artifact Registry Docker repository
 - Two Cloud Run services:
   - `gmail-organizer-backend`
@@ -29,7 +30,7 @@ Enable these APIs:
 Add these in GitHub repo settings under **Secrets and variables > Actions > Variables**:
 
 ```text
-GCP_PROJECT_ID=your-gcp-project-id
+GCP_PROJECT_ID=project-0febde82-373f-4319-84d
 GCP_REGION=us-central1
 GCP_ARTIFACT_REPOSITORY=gmail-organizer
 GCP_BACKEND_SERVICE=gmail-organizer-backend
@@ -39,6 +40,20 @@ FRONTEND_URL=https://your-frontend-service-url
 FRONTEND_CALLBACK_URL=https://your-frontend-service-url/api/auth/callback
 NEXT_PUBLIC_BACKEND_URL=https://your-backend-service-url
 GMAIL_COMPLETE_SCAN_LIMIT=5000
+```
+
+## GCP CLI Setup
+
+If you use `gcloud`, set the active project with:
+
+```bash
+gcloud config set project project-0febde82-373f-4319-84d
+```
+
+Enable the required APIs:
+
+```bash
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com iamcredentials.googleapis.com gmail.googleapis.com
 ```
 
 ## GitHub Actions Secrets
