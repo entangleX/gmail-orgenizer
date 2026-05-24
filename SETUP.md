@@ -4,7 +4,7 @@
 
 ### Create Project
 1. Go to https://console.cloud.google.com/
-2. Create a new project (name: "Gmail Organizer")
+2. Create a new project (name: "MailTriage")
 
 ### Enable Gmail API
 1. Search for "Gmail API"
@@ -13,7 +13,7 @@
 ### Create OAuth Consent Screen
 1. Go to "APIs & Services" > "OAuth consent screen"
 2. Select "External" user type
-3. Fill in app name: "Gmail Organizer"
+3. Fill in app name: "MailTriage"
 4. Add your email as a test user
 
 ### Create OAuth Credentials
@@ -80,4 +80,4 @@ vercel
 
 ## 🎉 You're Done!
 
-Your Gmail Organizer is now running! Start organizing your inbox.
+Your MailTriage is now running! Start organizing your inbox.

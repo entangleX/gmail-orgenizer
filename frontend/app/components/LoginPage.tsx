@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { authAPI } from '../utils/api';
 import { authUtils } from '../utils/auth';
+import BrandMark from './BrandMark';
 import styles from './LoginPage.module.css';
 
 interface LoginPageProps {
@@ -103,6 +104,13 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
       <main className={styles.portal}>
         <section className={styles.showcase}>
+          <div className={styles.brandLockup}>
+            <BrandMark size={48} />
+            <div>
+              <strong>MailTriage</strong>
+              <span>Private inbox optimizer</span>
+            </div>
+          </div>
           <p className={styles.eyebrow}>Inbox optimizer</p>
           <h1 className={styles.title}>Your Inbox, Reclaimed.</h1>
           <p className={styles.subtitle}>
@@ -135,6 +143,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
         </section>
 
         <section className={styles.card}>
+          <BrandMark size={40} />
           <p className={styles.cardEyebrow}>Secure portal</p>
           <h2>{user ? `Welcome${user.name ? `, ${user.name}` : ''}` : 'Continue with Google'}</h2>
           <p className={styles.cardCopy}>
@@ -196,7 +205,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             <p className={styles.cardEyebrow}>Google permission</p>
             <h2 id="gmail-permission-title">Connect Gmail metadata</h2>
             <p>
-              To calculate your cleanup score and sort inbox clutter, Gmail Organizer needs temporary Gmail metadata access.
+              To calculate your cleanup score and sort inbox clutter, MailTriage needs temporary Gmail metadata access.
               It does not fetch message bodies, snippets, or attachment files.
             </p>
             <div className={styles.permissionFacts}>

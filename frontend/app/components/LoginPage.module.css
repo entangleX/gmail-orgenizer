@@ -31,6 +31,29 @@
   padding: 12px 8px;
 }
 
+.brandLockup {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.brandLockup div {
+  display: grid;
+  gap: 2px;
+}
+
+.brandLockup strong {
+  color: #0f172a;
+  font-size: 1.08rem;
+  line-height: 1;
+}
+
+.brandLockup span {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .eyebrow,
 .cardEyebrow {
   color: #64748b;

@@ -21,6 +21,9 @@
 }
 
 .brand {
+  align-items: center;
+  display: inline-flex;
+  gap: 10px;
   font-size: 1rem;
   font-weight: 800;
 }

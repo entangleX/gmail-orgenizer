@@ -2,22 +2,22 @@ import type { Metadata } from 'next';
 import PolicyPage from '../components/PolicyPage';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | Gmail Organizer',
+  title: 'Privacy Policy | MailTriage',
 };
 
 export default function PrivacyPage() {
-  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'Set NEXT_PUBLIC_SUPPORT_EMAIL before public launch';
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'mailtriage.contact@yahoo.com';
 
   return (
     <PolicyPage
       eyebrow="Privacy"
       title="Privacy Policy"
       updated="May 24, 2026"
-      notice="Gmail Organizer is designed for user-directed inbox cleanup. It uses the minimum Google permissions needed for signup, metadata scanning, and optional archive/trash actions."
+      notice="MailTriage is designed for user-directed inbox cleanup. It uses the minimum Google permissions needed for signup, metadata scanning, and optional archive/trash actions."
       sections={[
         {
-          title: 'What Gmail Organizer does',
-          body: 'Gmail Organizer helps users scan Gmail metadata, classify messages into cleanup categories, and perform user-confirmed archive or trash actions only after the user grants the separate Gmail action permission.',
+          title: 'What MailTriage does',
+          body: 'MailTriage helps users scan Gmail metadata, classify messages into cleanup categories, and perform user-confirmed archive or trash actions only after the user grants the separate Gmail action permission.',
         },
         {
           title: 'Google user data we access',
@@ -49,7 +49,7 @@ export default function PrivacyPage() {
         },
         {
           title: 'Google API Limited Use',
-          body: 'Gmail Organizer use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.',
+          body: 'MailTriage use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.',
         },
         {
           title: 'Storage and security',

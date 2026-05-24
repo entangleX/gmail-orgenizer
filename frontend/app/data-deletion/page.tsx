@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 import PolicyPage from '../components/PolicyPage';
 
 export const metadata: Metadata = {
-  title: 'Data Deletion | Gmail Organizer',
+  title: 'Data Deletion | MailTriage',
 };
 
 export default function DataDeletionPage() {
-  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'Set NEXT_PUBLIC_SUPPORT_EMAIL before public launch';
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'mailtriage.contact@yahoo.com';
 
   return (
     <PolicyPage
@@ -16,16 +16,16 @@ export default function DataDeletionPage() {
       sections={[
         {
           title: 'Revoke Google access',
-          body: 'You can disconnect Gmail Organizer from your Google Account at any time from Google Account permissions.',
+          body: 'You can disconnect MailTriage from your Google Account at any time from Google Account permissions.',
           items: [
             'Open https://myaccount.google.com/permissions',
-            'Find Gmail Organizer in the list of connected apps.',
+            'Find MailTriage in the list of connected apps.',
             'Select it and choose Remove Access.',
           ],
         },
         {
           title: 'Delete app data',
-          body: `Gmail Organizer is designed not to store message bodies, snippets, attachment contents, or scan results on the backend. To request deletion of any account metadata associated with support or production operations, email ${supportEmail}.`,
+          body: `MailTriage is designed not to store message bodies, snippets, attachment contents, or scan results on the backend. To request deletion of any account metadata associated with support or production operations, email ${supportEmail}.`,
         },
         {
           title: 'Local browser data',

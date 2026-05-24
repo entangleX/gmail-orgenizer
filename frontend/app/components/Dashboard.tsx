@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { emailAPI, authAPI } from '../utils/api';
 import { authUtils } from '../utils/auth';
+import BrandMark from './BrandMark';
 import EmailBucket from './EmailBucket';
 import styles from './Dashboard.module.css';
 
@@ -312,9 +313,12 @@ export default function Dashboard() {
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.headerContent}>
-          <div>
-            <p className={styles.eyebrow}>Inbox optimizer</p>
-            <h1 className={styles.title}>Gmail Organizer</h1>
+          <div className={styles.brandLockup}>
+            <BrandMark size={42} />
+            <div>
+              <p className={styles.eyebrow}>Inbox optimizer</p>
+              <h1 className={styles.title}>MailTriage</h1>
+            </div>
           </div>
           <div className={styles.headerActions}>
             <select
@@ -566,7 +570,7 @@ export default function Dashboard() {
             <p className={styles.eyebrow}>Permission step</p>
             <h2 id="actions-title">Enable archive and trash</h2>
             <p>
-              Gmail Organizer scans with metadata-only access. To archive or move selected emails to trash,
+              MailTriage scans with metadata-only access. To archive or move selected emails to trash,
               Google requires one extra Gmail modify permission. The app will only act on messages you select and confirm.
             </p>
             <div className={styles.permissionFacts}>

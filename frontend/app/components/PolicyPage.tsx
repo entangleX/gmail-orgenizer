@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BrandMark from './BrandMark';
 import styles from './PolicyPage.module.css';
 
 interface PolicySection {
@@ -21,7 +22,8 @@ export default function PolicyPage({ eyebrow, title, updated, notice, sections }
       <div className={styles.shell}>
         <nav className={styles.nav}>
           <Link href="/" className={styles.brand}>
-            Gmail Organizer
+            <BrandMark size={34} />
+            <span>MailTriage</span>
           </Link>
           <Link href="/" className={styles.backLink}>
             Back to app

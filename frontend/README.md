@@ -1,4 +1,4 @@
-# Gmail Organizer - Frontend
+# MailTriage - Frontend
 
 React/Next.js frontend for Gmail email organization and management.
 

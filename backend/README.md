@@ -1,4 +1,4 @@
-# Python Backend for Gmail Organizer
+# Python Backend for MailTriage
 
 Flask API backend that handles:
 - OAuth 2.0 authentication with Google
@@ -84,7 +84,7 @@ Before submitting OAuth verification, confirm:
 Recommended scope justification:
 
 ```text
-Gmail Organizer uses incremental authorization. Signup requests only basic profile scopes. When a user chooses to scan their inbox, the app requests gmail.metadata to read message IDs, labels, selected headers, dates, and size estimates needed to calculate a temporary cleanup dashboard. The app does not fetch message bodies, Gmail snippets, attachment contents, or attachment files. When a user selects emails and chooses Archive or Trash, the app requests gmail.modify so it can perform only that confirmed action on the selected message IDs.
+MailTriage uses incremental authorization. Signup requests only basic profile scopes. When a user chooses to scan their inbox, the app requests gmail.metadata to read message IDs, labels, selected headers, dates, and size estimates needed to calculate a temporary cleanup dashboard. The app does not fetch message bodies, Gmail snippets, attachment contents, or attachment files. When a user selects emails and chooses Archive or Trash, the app requests gmail.modify so it can perform only that confirmed action on the selected message IDs.
 ```
 
 ## Verification Demo Video Script

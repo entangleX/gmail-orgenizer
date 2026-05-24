@@ -1,4 +1,4 @@
-# Gmail Organizer - Full Stack Application
+# MailTriage - Full Stack Application
 
 A Gmail optimization tool built with a Flask backend and Next.js frontend. It classifies inbox metadata into cleanup groups and only requests archive/trash permission when the user chooses an action.
 
@@ -14,7 +14,7 @@ A Gmail optimization tool built with a Flask backend and Next.js frontend. It cl
 ## 📁 Project Structure
 
 ```
-Gmail-Organizer/
+MailTriage/
 ├── backend/                  # Python Flask API
 │   ├── app/
 │   │   ├── services/        # Gmail API & bucketing logic
@@ -101,7 +101,7 @@ cp .env.local.example .env.local
 
 # Update .env.local if needed
 # NEXT_PUBLIC_BACKEND_URL=http://localhost:5001
-# NEXT_PUBLIC_SUPPORT_EMAIL=your-support-email@example.com
+# NEXT_PUBLIC_SUPPORT_EMAIL=mailtriage.contact@yahoo.com
 ```
 
 ### Step 4: Run Locally

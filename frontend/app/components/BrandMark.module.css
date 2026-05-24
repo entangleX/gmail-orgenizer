@@ -1,0 +1,34 @@
+.brandMark {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(16, 185, 129, 0.16)),
+    #ffffff;
+  border: 1px solid #dbe4f0;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+  color: #0f766e;
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.brandMark::after {
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  content: '';
+  height: 38%;
+  position: absolute;
+  right: -14%;
+  top: -12%;
+  width: 44%;
+}
+
+.brandMark svg {
+  display: block;
+  height: 72%;
+  position: relative;
+  width: 72%;
+  z-index: 1;
+}

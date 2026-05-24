@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 import PolicyPage from '../components/PolicyPage';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | Gmail Organizer',
+  title: 'Terms of Service | MailTriage',
 };
 
 export default function TermsPage() {
-  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'Set NEXT_PUBLIC_SUPPORT_EMAIL before public launch';
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'mailtriage.contact@yahoo.com';
 
   return (
     <PolicyPage
@@ -16,7 +16,7 @@ export default function TermsPage() {
       sections={[
         {
           title: 'Use of the service',
-          body: 'Gmail Organizer helps users review metadata-based classifications, then archive or move selected Gmail messages to trash after they grant the separate action permission. Users are responsible for reviewing selections before confirming actions.',
+          body: 'MailTriage helps users review metadata-based classifications, then archive or move selected Gmail messages to trash after they grant the separate action permission. Users are responsible for reviewing selections before confirming actions.',
         },
         {
           title: 'User responsibilities',
@@ -32,7 +32,7 @@ export default function TermsPage() {
         },
         {
           title: 'Privacy and Google data',
-          body: 'Use of Google user data is governed by the Privacy Policy. Gmail Organizer is designed to scan Gmail metadata only and does not fetch message bodies, snippets, or attachment contents for classification.',
+          body: 'Use of Google user data is governed by the Privacy Policy. MailTriage is designed to scan Gmail metadata only and does not fetch message bodies, snippets, or attachment contents for classification.',
         },
         {
           title: 'Service availability',

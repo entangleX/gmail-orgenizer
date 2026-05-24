@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Gmail Organizer',
-  description: 'Clean your Gmail for free. Automatically organize and bulk delete emails.',
+  title: 'MailTriage',
+  description: 'MailTriage organizes Gmail metadata into private cleanup workflows.',
 };
 
 export default function RootLayout({
