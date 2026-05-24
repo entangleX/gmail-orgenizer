@@ -40,6 +40,13 @@ export const authAPI = {
   logout: async () => {
     return request<any>('/api/auth/logout', { method: 'POST' });
   },
+
+  revoke: async (credentials: any) => {
+    return request<any>('/api/auth/revoke', {
+      method: 'POST',
+      body: JSON.stringify({ credentials }),
+    });
+  },
 };
 
 // Email API calls

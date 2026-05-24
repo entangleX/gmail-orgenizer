@@ -14,6 +14,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [gmailConnected, setGmailConnected] = useState(false);
+  const [pendingAccess, setPendingAccess] = useState<'gmail' | null>(null);
 
   useEffect(() => {
     setUser(authUtils.getUser());
@@ -88,61 +89,132 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   const handleSignupClick = () => startOAuth('profile');
-  const handleConnectGmailClick = () => startOAuth('gmail');
+  const handleConnectGmailClick = () => setPendingAccess('gmail');
 
   return (
     <div className={styles.container}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>Gmail Organizer</h1>
-        <p className={styles.subtitle}>
-          {user ? `Welcome${user.name ? `, ${user.name}` : ''}` : 'Create your account first. Connect Gmail metadata only when ready.'}
-        </p>
-        
-        <div className={styles.features}>
-          <div className={styles.feature}>
-            <span className={styles.icon}>📧</span>
-            <p>Organize using Gmail metadata, labels, and headers</p>
+      {loading && status.includes('Finishing') && (
+        <div className={styles.loadingOverlay} role="status">
+          <div className={styles.pulse} />
+          <p>{status}</p>
+          <span>Building your private cleanup session...</span>
+        </div>
+      )}
+
+      <main className={styles.portal}>
+        <section className={styles.showcase}>
+          <p className={styles.eyebrow}>Inbox optimizer</p>
+          <h1 className={styles.title}>Your Inbox, Reclaimed.</h1>
+          <p className={styles.subtitle}>
+            Sort Gmail clutter into clear cleanup groups with metadata-only scanning and user-confirmed actions.
+          </p>
+
+          <div className={styles.previewPanel} aria-hidden="true">
+            <div className={styles.previewHeader}>
+              <span>Cleanup score</span>
+              <strong>82</strong>
+            </div>
+            <div className={styles.previewGrid}>
+              <div><strong>76</strong><span>Promotions</span></div>
+              <div><strong>6</strong><span>OTPs</span></div>
+              <div><strong>13</strong><span>Jobs</span></div>
+              <div><strong>2</strong><span>Attachments</span></div>
+            </div>
+            <div className={styles.previewRows}>
+              <span />
+              <span />
+              <span />
+            </div>
           </div>
-          <div className={styles.feature}>
-            <span className={styles.icon}>🗑️</span>
-            <p>Request archive/trash permission only when needed</p>
+
+          <div className={styles.trustStrip}>
+            <span>No body reads</span>
+            <span>Session only</span>
+            <span>Revoke anytime</span>
           </div>
-          <div className={styles.feature}>
-            <span className={styles.icon}>🔒</span>
-            <p>No message bodies or attachments are fetched for scanning</p>
+        </section>
+
+        <section className={styles.card}>
+          <p className={styles.cardEyebrow}>Secure portal</p>
+          <h2>{user ? `Welcome${user.name ? `, ${user.name}` : ''}` : 'Continue with Google'}</h2>
+          <p className={styles.cardCopy}>
+            {user
+              ? 'Your account is ready. Connect Gmail metadata only when you want to scan.'
+              : 'Signup only uses your basic Google profile. Gmail access is requested later, right before scanning.'}
+          </p>
+
+          {!user && (
+            <button onClick={handleSignupClick} className={styles.loginButton} disabled={loading}>
+              {loading ? 'Working...' : 'Continue with Google'}
+            </button>
+          )}
+
+          {user && !gmailConnected && (
+            <button onClick={handleConnectGmailClick} className={styles.loginButton} disabled={loading}>
+              {loading ? 'Working...' : 'Scan my inbox'}
+            </button>
+          )}
+
+          {user && gmailConnected && (
+            <button onClick={() => { window.location.href = '/dashboard'; }} className={styles.loginButton}>
+              Open dashboard
+            </button>
+          )}
+
+          {status && <p className={styles.status}>{status}</p>}
+
+          <div className={styles.privacyBox}>
+            <div>
+              <strong>Zero retention scan</strong>
+              <span>Scan results stay in your active browser session.</span>
+            </div>
+            <div>
+              <strong>Metadata-first</strong>
+              <span>No message bodies, snippets, or attachment files are fetched.</span>
+            </div>
+            <div>
+              <strong>No selling</strong>
+              <span>Google data is used only to organize your inbox session.</span>
+            </div>
+          </div>
+
+          <p className={styles.privacyNote}>
+            By continuing, you agree to the Privacy Policy and Terms. Gmail scan and Gmail actions use separate Google consent steps.
+          </p>
+
+          <div className={styles.legalLinks}>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/data-deletion">Data deletion</a>
+          </div>
+        </section>
+      </main>
+
+      {pendingAccess === 'gmail' && (
+        <div className={styles.modalBackdrop} role="presentation">
+          <div className={styles.permissionModal} role="dialog" aria-modal="true" aria-labelledby="gmail-permission-title">
+            <p className={styles.cardEyebrow}>Google permission</p>
+            <h2 id="gmail-permission-title">Connect Gmail metadata</h2>
+            <p>
+              To calculate your cleanup score and sort inbox clutter, Gmail Organizer needs temporary Gmail metadata access.
+              It does not fetch message bodies, snippets, or attachment files.
+            </p>
+            <div className={styles.permissionFacts}>
+              <span>Subjects, dates, labels, sender domains</span>
+              <span>Processed in-memory for your dashboard</span>
+              <span>Archive/trash permission requested later</span>
+            </div>
+            <div className={styles.modalActions}>
+              <button className={styles.secondaryBtn} onClick={() => setPendingAccess(null)}>
+                Not now
+              </button>
+              <button className={styles.loginButton} onClick={() => startOAuth('gmail')} disabled={loading}>
+                Continue to Google
+              </button>
+            </div>
           </div>
         </div>
-
-        {!user && (
-          <button onClick={handleSignupClick} className={styles.loginButton} disabled={loading}>
-            {loading ? 'Working...' : 'Sign up with Google'}
-          </button>
-        )}
-
-        {user && !gmailConnected && (
-          <button onClick={handleConnectGmailClick} className={styles.loginButton} disabled={loading}>
-            {loading ? 'Working...' : 'Connect Gmail metadata'}
-          </button>
-        )}
-
-        {user && gmailConnected && (
-          <button onClick={() => { window.location.href = '/dashboard'; }} className={styles.loginButton}>
-            Open dashboard
-          </button>
-        )}
-
-        {status && <p className={styles.status}>{status}</p>}
-
-        <p className={styles.privacyNote}>
-          Signup uses basic profile access. Gmail scan uses metadata-only access. Archive and trash permissions are requested separately.
-        </p>
-
-        <div className={styles.legalLinks}>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-          <a href="/data-deletion">Data deletion</a>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

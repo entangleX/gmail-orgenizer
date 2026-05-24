@@ -216,6 +216,7 @@ class EmailBucketer:
             'subject': subject[:140],
             'sender': cls.sender_domain(sender),
             'sent_at': sent_at,
+            'size_estimate': email.get('sizeEstimate', 0),
             'tags': tags,
             **age_info,
         }

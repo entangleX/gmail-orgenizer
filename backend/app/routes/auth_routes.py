@@ -1,6 +1,7 @@
 """Authentication routes for OAuth 2.0 flow."""
 
 from flask import Blueprint, request, jsonify, session
+import requests
 from app.services.gmail_service import GmailService
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -97,3 +98,27 @@ def logout():
     """Clear the session (logout)."""
     session.clear()
     return jsonify({'success': True, 'message': 'Logged out successfully'})
+
+@auth_bp.route('/revoke', methods=['POST'])
+def revoke():
+    """Revoke the current Google OAuth grant and clear the local session."""
+    data = request.get_json(silent=True) or {}
+    creds_dict = data.get('credentials') or {}
+    token = creds_dict.get('refresh_token') or creds_dict.get('token')
+
+    session.clear()
+
+    if not token:
+        return jsonify({'success': True, 'message': 'Session cleared'})
+
+    response = requests.post(
+        'https://oauth2.googleapis.com/revoke',
+        params={'token': token},
+        headers={'content-type': 'application/x-www-form-urlencoded'},
+        timeout=10
+    )
+
+    if response.status_code not in [200, 400]:
+        return jsonify({'error': 'Failed to revoke Google access'}), 502
+
+    return jsonify({'success': True, 'message': 'Google access revoked'})
