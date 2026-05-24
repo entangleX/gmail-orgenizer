@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5001:5001"
+    environment:
+      - FLASK_ENV=development
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-dev-secret-change-me}
+      - FRONTEND_URL=http://localhost:3000
+      - FRONTEND_CALLBACK_URL=http://localhost:3000/api/auth/callback
+      - BACKEND_URL=http://localhost:5001
+      - FLASK_PORT=5001
+    volumes:
+      - ./backend:/app
+    command: python main.py
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:5001
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+    depends_on:
+      - backend
