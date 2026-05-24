@@ -48,7 +48,10 @@ def callback():
         return jsonify({'error': 'State mismatch - potential CSRF attack'}), 400
     
     try:
-        access_type = session.get('oauth_access_type', request.args.get('access', 'gmail'))
+        access_type = request.args.get('access') or session.get('oauth_access_type') or 'gmail'
+        if access_type not in ['profile', 'gmail', 'actions']:
+            return jsonify({'error': 'Invalid access type'}), 400
+
         # Exchange code for credentials
         credentials = gmail_service.get_credentials_from_code(code, access_type)
         creds_dict = gmail_service.credentials_to_dict(credentials)

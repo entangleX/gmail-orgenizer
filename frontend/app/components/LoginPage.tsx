@@ -63,7 +63,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
           window.history.replaceState({}, '', '/');
         } catch (error) {
           console.error('Callback handling failed:', error);
-          setStatus('Could not finish sign-in. Check your Google OAuth setup and backend server.');
+          setStatus('Could not finish sign-in. Check the production Google OAuth setup and try again.');
         } finally {
           setLoading(false);
         }
@@ -84,7 +84,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
       window.location.href = auth_url;
     } catch (error) {
       console.error('Login failed:', error);
-      setStatus('Failed to start sign-in. Make sure the backend is running and configured.');
+      setStatus('Failed to start sign-in. Check the production backend and Google OAuth configuration.');
       setLoading(false);
     }
   };
