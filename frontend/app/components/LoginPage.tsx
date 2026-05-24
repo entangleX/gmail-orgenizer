@@ -136,6 +136,12 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
         <p className={styles.privacyNote}>
           Signup uses basic profile access. Gmail access is requested separately because it requires Google verification for public launch.
         </p>
+
+        <div className={styles.legalLinks}>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/data-deletion">Data deletion</a>
+        </div>
       </div>
     </div>
   );

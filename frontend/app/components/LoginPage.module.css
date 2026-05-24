@@ -103,3 +103,21 @@
   color: #999;
   line-height: 1.5;
 }
+
+.legalLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.legalLinks a {
+  color: #3f4b63;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.legalLinks a:hover {
+  color: #1a73e8;
+}
