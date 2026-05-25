@@ -1,6 +1,7 @@
 """Gmail API Service for handling email operations."""
 
 import os
+import time
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google.oauth2 import id_token
@@ -9,6 +10,8 @@ from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from datetime import datetime
+
+os.environ.setdefault('OAUTHLIB_RELAX_TOKEN_SCOPE', '1')
 
 PROFILE_SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
 GMAIL_METADATA_SCOPES = [
@@ -21,9 +24,24 @@ GMAIL_ACTION_SCOPES = [
     'openid',
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
-    'https://www.googleapis.com/auth/gmail.metadata',
     'https://www.googleapis.com/auth/gmail.modify',
 ]
+
+MESSAGE_METADATA_HEADERS = [
+    'From',
+    'Subject',
+    'Date',
+    'Content-Type',
+    'Content-Disposition',
+    'X-Attachment-Id'
+]
+
+METADATA_BATCH_SIZE = max(1, min(int(os.getenv('GMAIL_METADATA_BATCH_SIZE', '20')), 100))
+ACTION_BATCH_SIZE = max(1, min(int(os.getenv('GMAIL_ACTION_BATCH_SIZE', '1')), 100))
+ARCHIVE_BATCH_SIZE = max(1, min(int(os.getenv('GMAIL_ARCHIVE_BATCH_SIZE', '50')), 1000))
+GMAIL_BATCH_PAUSE_SECONDS = float(os.getenv('GMAIL_BATCH_PAUSE_SECONDS', '0.2'))
+GMAIL_MAX_RETRIES = max(0, int(os.getenv('GMAIL_MAX_RETRIES', '4')))
+GMAIL_RETRY_BASE_SECONDS = float(os.getenv('GMAIL_RETRY_BASE_SECONDS', '1.0'))
 
 class GmailService:
     def __init__(self):
@@ -71,7 +89,7 @@ class GmailService:
         flow = self.get_auth_flow(access_type)
         auth_url, state = flow.authorization_url(
             access_type='offline',
-            include_granted_scopes='true',
+            include_granted_scopes='true' if access_type in ['gmail', 'actions'] else 'false',
             prompt='consent' if access_type in ['gmail', 'actions'] else 'select_account'
         )
         return auth_url, state
@@ -85,12 +103,14 @@ class GmailService:
     
     def credentials_to_dict(self, credentials):
         """Convert credentials object to a browser-safe dictionary."""
+        granted_scopes = credentials.granted_scopes or credentials.scopes or []
         return {
             'token': credentials.token,
             'refresh_token': credentials.refresh_token,
             'token_uri': credentials.token_uri,
             'client_id': credentials.client_id or self.client_id,
             'scopes': credentials.scopes,
+            'granted_scopes': granted_scopes,
             'expiry': credentials.expiry.isoformat() if credentials.expiry else None,
         }
 
@@ -119,7 +139,8 @@ class GmailService:
             token_uri=creds_dict.get('token_uri'),
             client_id=self.client_id,
             client_secret=self.client_secret,
-            scopes=creds_dict.get('scopes')
+            scopes=creds_dict.get('scopes'),
+            granted_scopes=creds_dict.get('granted_scopes')
         )
         expiry = creds_dict.get('expiry')
         if expiry:
@@ -139,6 +160,33 @@ class GmailService:
         
         service = build('gmail', 'v1', credentials=credentials)
         return service
+
+    def is_rate_limited(self, error):
+        """Detect Gmail's per-user quota and concurrency throttles."""
+        status = getattr(getattr(error, 'resp', None), 'status', None)
+        content = error.content.decode('utf-8', errors='ignore') if getattr(error, 'content', None) else ''
+        return status == 429 or (status == 403 and 'rateLimitExceeded' in content)
+
+    def is_insufficient_permissions(self, error):
+        """Detect tokens that do not actually include the required Gmail scope."""
+        status = getattr(getattr(error, 'resp', None), 'status', None)
+        content = error.content.decode('utf-8', errors='ignore') if getattr(error, 'content', None) else ''
+        return status == 403 and 'insufficientPermissions' in content
+
+    def execute_with_retry(self, request, description):
+        """Execute a Gmail request, backing off when Google asks us to slow down."""
+        for attempt in range(GMAIL_MAX_RETRIES + 1):
+            try:
+                return request.execute()
+            except HttpError as error:
+                if attempt >= GMAIL_MAX_RETRIES or not self.is_rate_limited(error):
+                    raise
+
+                delay = GMAIL_RETRY_BASE_SECONDS * (2 ** attempt)
+                print(f'Gmail rate limit while {description}; retrying in {delay:.1f}s')
+                time.sleep(delay)
+
+        return None
     
     def fetch_messages(self, service, max_results=200):
         """Fetch message IDs from the user's mailbox."""
@@ -176,14 +224,7 @@ class GmailService:
                 userId='me',
                 id=message_id,
                 format='metadata',
-                metadataHeaders=[
-                    'From',
-                    'Subject',
-                    'Date',
-                    'Content-Type',
-                    'Content-Disposition',
-                    'X-Attachment-Id'
-                ]
+                metadataHeaders=MESSAGE_METADATA_HEADERS
             ).execute()
             
             return message
@@ -193,27 +234,75 @@ class GmailService:
     
     def batch_get_messages(self, service, message_ids, max_results=None):
         """Batch fetch details for multiple messages."""
-        messages = []
         limit = len(message_ids) if max_results in [None, 'all'] else int(max_results)
+        target_ids = [msg.get('id') for msg in message_ids[:limit] if msg.get('id')]
+        messages_by_id = {}
 
-        for msg_id in message_ids[:limit]:
-            message = self.get_message_details(service, msg_id.get('id'))
-            if message:
-                messages.append(message)
+        def collect_message(request_id, response, exception):
+            if exception is not None:
+                print(f'An error occurred: {exception}')
+                return
+            if response:
+                messages_by_id[response.get('id')] = response
+
+        for start in range(0, len(target_ids), METADATA_BATCH_SIZE):
+            batch = service.new_batch_http_request(callback=collect_message)
+            for message_id in target_ids[start:start + METADATA_BATCH_SIZE]:
+                batch.add(
+                    service.users().messages().get(
+                        userId='me',
+                        id=message_id,
+                        format='metadata',
+                        metadataHeaders=MESSAGE_METADATA_HEADERS
+                    ),
+                    request_id=message_id
+                )
+            batch.execute()
+            if GMAIL_BATCH_PAUSE_SECONDS:
+                time.sleep(GMAIL_BATCH_PAUSE_SECONDS)
         
-        return messages
+        return [messages_by_id[message_id] for message_id in target_ids if message_id in messages_by_id]
     
-    def move_to_trash(self, service, message_ids):
+    def move_to_trash(self, service, message_ids, progress_callback=None):
         """Move messages to trash."""
-        processed = 0
-        try:
-            for msg_id in message_ids:
-                service.users().messages().trash(userId='me', id=msg_id).execute()
-                processed += 1
-            return processed == len(message_ids), processed
-        except HttpError as error:
-            print(f'An error occurred: {error}')
-            return False, processed
+        trashed_ids = []
+        failed_ids = []
+        rate_limited = False
+        insufficient_scope = False
+
+        for message_id in message_ids:
+            try:
+                response = self.execute_with_retry(
+                    service.users().messages().trash(
+                        userId='me',
+                        id=message_id
+                    ),
+                    f'trashing message {message_id}'
+                )
+                if response:
+                    trashed_ids.append(message_id)
+                    if progress_callback:
+                        progress_callback(message_id, True)
+                if GMAIL_BATCH_PAUSE_SECONDS:
+                    time.sleep(GMAIL_BATCH_PAUSE_SECONDS)
+            except HttpError as error:
+                print(f'An error occurred while trashing {message_id}: {error}')
+                failed_ids.append(message_id)
+                if progress_callback:
+                    progress_callback(message_id, False)
+                rate_limited = self.is_rate_limited(error)
+                insufficient_scope = self.is_insufficient_permissions(error)
+                if rate_limited or insufficient_scope:
+                    break
+
+        return {
+            'success': len(trashed_ids) == len(message_ids),
+            'count': len(trashed_ids),
+            'trashed_ids': trashed_ids,
+            'failed_ids': failed_ids,
+            'rate_limited': rate_limited,
+            'insufficient_scope': insufficient_scope,
+        }
     
     def delete_permanently(self, service, message_ids):
         """Permanently delete messages."""
@@ -228,17 +317,46 @@ class GmailService:
             print(f'An error occurred: {error}')
             return False
     
-    def archive_messages(self, service, message_ids):
+    def archive_messages(self, service, message_ids, progress_callback=None):
         """Archive messages by removing them from the inbox."""
+        archived_ids = []
+        failed_ids = []
+        rate_limited = False
+        insufficient_scope = False
+
         try:
-            service.users().messages().batchModify(
-                userId='me',
-                body={
-                    'ids': message_ids,
-                    'removeLabelIds': ['INBOX']
-                }
-            ).execute()
-            return True, len(message_ids)
+            for start in range(0, len(message_ids), ARCHIVE_BATCH_SIZE):
+                chunk = message_ids[start:start + ARCHIVE_BATCH_SIZE]
+                self.execute_with_retry(
+                    service.users().messages().batchModify(
+                        userId='me',
+                        body={
+                            'ids': chunk,
+                            'removeLabelIds': ['INBOX']
+                        }
+                    ),
+                    f'archiving {len(chunk)} messages'
+                )
+                archived_ids.extend(chunk)
+                if progress_callback:
+                    for message_id in chunk:
+                        progress_callback(message_id, True)
+                if GMAIL_BATCH_PAUSE_SECONDS:
+                    time.sleep(GMAIL_BATCH_PAUSE_SECONDS)
         except HttpError as error:
             print(f'An error occurred: {error}')
-            return False, 0
+            failed_ids.extend(message_ids[len(archived_ids):])
+            rate_limited = self.is_rate_limited(error)
+            insufficient_scope = self.is_insufficient_permissions(error)
+            if progress_callback:
+                for message_id in failed_ids:
+                    progress_callback(message_id, False)
+
+        return {
+            'success': len(archived_ids) == len(message_ids),
+            'count': len(archived_ids),
+            'archived_ids': archived_ids,
+            'failed_ids': failed_ids,
+            'rate_limited': rate_limited,
+            'insufficient_scope': insufficient_scope,
+        }

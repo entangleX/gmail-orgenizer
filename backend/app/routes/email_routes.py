@@ -3,14 +3,18 @@
 from flask import Blueprint, request, jsonify, session
 from app.services.gmail_service import GmailService
 from app.services.email_bucketer import EmailBucketer
+from app.services.cleanup_job_queue import CleanupJobQueue
 
 email_bp = Blueprint('emails', __name__, url_prefix='/api/emails')
 gmail_service = GmailService()
 email_bucketer = EmailBucketer()
+cleanup_jobs = CleanupJobQueue(gmail_service)
 GMAIL_MODIFY_SCOPE = 'https://www.googleapis.com/auth/gmail.modify'
 
 def has_scope(creds_dict, scope):
-    scopes = creds_dict.get('scopes') or []
+    if scope == GMAIL_MODIFY_SCOPE and 'granted_scopes' not in creds_dict:
+        return False
+    scopes = creds_dict.get('granted_scopes') or creds_dict.get('scopes') or []
     return scope in scopes
 
 @email_bp.route('/fetch', methods=['POST'])
@@ -59,7 +63,7 @@ def fetch_emails():
 
 @email_bp.route('/trash', methods=['POST'])
 def trash_emails():
-    """Move selected emails to trash."""
+    """Queue selected emails to be moved to trash."""
     data = request.get_json(silent=True) or {}
     creds_dict = data.get('credentials')
     message_ids = data.get('message_ids', [])
@@ -71,35 +75,23 @@ def trash_emails():
         return jsonify({'error': 'No message IDs provided'}), 400
 
     if not has_scope(creds_dict, GMAIL_MODIFY_SCOPE):
-        return jsonify({'error': 'Archive and trash require Gmail modify permission'}), 403
+        return jsonify({'error': 'Reconnect Google cleanup permission to archive or trash emails.'}), 403
     
     try:
-        credentials = gmail_service.dict_to_credentials(creds_dict)
-        service = gmail_service.get_gmail_service(credentials)
-        
-        if not service:
-            return jsonify({'error': 'Failed to authenticate with Gmail'}), 500
-        
-        success, count = gmail_service.move_to_trash(service, message_ids)
-        
-        if success:
-            return jsonify({
-                'success': True,
-                'message': f'Moved {count} emails to trash',
-                'count': count
-            })
-        else:
-            return jsonify({
-                'error': 'Failed to trash all emails',
-                'count': count
-            }), 500
+        job = cleanup_jobs.submit('trash', creds_dict, message_ids)
+        return jsonify({
+            'success': True,
+            'queued': True,
+            'message': f'Queued {len(message_ids)} emails for trash',
+            'job': job,
+        }), 202
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @email_bp.route('/archive', methods=['POST'])
 def archive_emails():
-    """Archive selected emails."""
+    """Queue selected emails to be archived."""
     data = request.get_json(silent=True) or {}
     creds_dict = data.get('credentials')
     message_ids = data.get('message_ids', [])
@@ -111,28 +103,27 @@ def archive_emails():
         return jsonify({'error': 'No message IDs provided'}), 400
 
     if not has_scope(creds_dict, GMAIL_MODIFY_SCOPE):
-        return jsonify({'error': 'Archive and trash require Gmail modify permission'}), 403
+        return jsonify({'error': 'Reconnect Google cleanup permission to archive or trash emails.'}), 403
     
     try:
-        credentials = gmail_service.dict_to_credentials(creds_dict)
-        service = gmail_service.get_gmail_service(credentials)
-        
-        if not service:
-            return jsonify({'error': 'Failed to authenticate with Gmail'}), 500
-        
-        success, count = gmail_service.archive_messages(service, message_ids)
-        
-        if success:
-            return jsonify({
-                'success': True,
-                'message': f'Archived {count} emails',
-                'count': count
-            })
-        else:
-            return jsonify({'error': 'Failed to archive emails'}), 500
+        job = cleanup_jobs.submit('archive', creds_dict, message_ids)
+        return jsonify({
+            'success': True,
+            'queued': True,
+            'message': f'Queued {len(message_ids)} emails for archive',
+            'job': job,
+        }), 202
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@email_bp.route('/jobs/<job_id>', methods=['GET'])
+def get_cleanup_job(job_id):
+    """Return progress for a queued cleanup job."""
+    job = cleanup_jobs.get(job_id)
+    if not job:
+        return jsonify({'error': 'Cleanup job not found'}), 404
+    return jsonify({'success': True, 'job': job})
 
 @email_bp.route('/stats', methods=['POST'])
 def get_stats():

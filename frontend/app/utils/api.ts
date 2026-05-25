@@ -81,6 +81,10 @@ export const emailAPI = {
     });
   },
 
+  getCleanupJob: async (jobId: string) => {
+    return request<any>(`/api/emails/jobs/${jobId}`);
+  },
+
   getStats: async (credentials: any) => {
     return request<any>('/api/emails/stats', {
       method: 'POST',

@@ -6,6 +6,8 @@ import { authUtils } from '../utils/auth';
 import BrandMark from './BrandMark';
 import styles from './LoginPage.module.css';
 
+const GMAIL_MODIFY_SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
+
 interface LoginPageProps {
   onLoginSuccess?: () => void;
 }
@@ -15,7 +17,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [gmailConnected, setGmailConnected] = useState(false);
-  const [pendingAccess, setPendingAccess] = useState<'gmail' | null>(null);
+  const [pendingAccess, setPendingAccess] = useState<'gmail' | 'actions' | null>(null);
 
   useEffect(() => {
     setUser(authUtils.getUser());
@@ -52,7 +54,13 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
           }
 
           if (['gmail', 'actions'].includes(result.access_type) && result.credentials) {
-            authUtils.storeCredentials(result.credentials);
+            const grantedScopes = result.credentials.granted_scopes || result.credentials.scopes || [];
+            if (result.access_type === 'actions' && !grantedScopes.includes(GMAIL_MODIFY_SCOPE)) {
+              setStatus('Google did not grant cleanup permission. Please choose Scan + enable cleanup actions again and approve Gmail cleanup access.');
+              window.history.replaceState({}, '', '/');
+              return;
+            }
+            authUtils.storeAccount(result.user, result.credentials);
             setGmailConnected(true);
             onLoginSuccess?.();
             window.location.href = '/dashboard';
@@ -63,7 +71,12 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
           window.history.replaceState({}, '', '/');
         } catch (error) {
           console.error('Callback handling failed:', error);
-          setStatus('Could not finish sign-in. Check the production Google OAuth setup and try again.');
+          const message = error instanceof Error ? error.message : '';
+          setStatus(
+            message.includes('Scope has changed')
+              ? 'Google returned an older permission set. Disconnect the app from your Google Account permissions, then try again.'
+              : 'Could not finish sign-in. Check the production Google OAuth setup and try again.'
+          );
         } finally {
           setLoading(false);
         }
@@ -76,7 +89,13 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const startOAuth = async (access: 'profile' | 'gmail' | 'actions') => {
     try {
       setLoading(true);
-      setStatus(access === 'profile' ? 'Opening Google signup...' : 'Opening Gmail metadata connection...');
+      const nextStatus =
+        access === 'profile'
+          ? 'Opening Google signup...'
+          : access === 'actions'
+            ? 'Opening Gmail cleanup permission...'
+            : 'Opening Gmail metadata connection...';
+      setStatus(nextStatus);
       const { auth_url, state, access_type } = await authAPI.getLoginUrl(access);
       authUtils.storeOAuthState(state, access_type);
       
@@ -91,6 +110,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
   const handleSignupClick = () => startOAuth('profile');
   const handleConnectGmailClick = () => setPendingAccess('gmail');
+  const handleCleanupAccessClick = () => setPendingAccess('actions');
 
   return (
     <div className={styles.container}>
@@ -159,9 +179,14 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
           )}
 
           {user && !gmailConnected && (
-            <button onClick={handleConnectGmailClick} className={styles.loginButton} disabled={loading}>
-              {loading ? 'Working...' : 'Scan my inbox'}
-            </button>
+            <div className={styles.connectChoices}>
+              <button onClick={handleConnectGmailClick} className={styles.loginButton} disabled={loading}>
+                {loading ? 'Working...' : 'Scan only'}
+              </button>
+              <button onClick={handleCleanupAccessClick} className={styles.secondaryActionButton} disabled={loading}>
+                Scan + enable cleanup actions
+              </button>
+            </div>
           )}
 
           {user && gmailConnected && (
@@ -188,7 +213,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
           </div>
 
           <p className={styles.privacyNote}>
-            By continuing, you agree to the Privacy Policy and Terms. Gmail scan and Gmail actions use separate Google consent steps.
+            By continuing, you agree to the Privacy Policy and Terms. Choose metadata-only scan or grant archive/trash permission upfront if you plan to clean immediately.
           </p>
 
           <div className={styles.legalLinks}>
@@ -199,25 +224,28 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
         </section>
       </main>
 
-      {pendingAccess === 'gmail' && (
+      {pendingAccess && (
         <div className={styles.modalBackdrop} role="presentation">
           <div className={styles.permissionModal} role="dialog" aria-modal="true" aria-labelledby="gmail-permission-title">
             <p className={styles.cardEyebrow}>Google permission</p>
-            <h2 id="gmail-permission-title">Connect Gmail metadata</h2>
+            <h2 id="gmail-permission-title">
+              {pendingAccess === 'actions' ? 'Enable scan and cleanup actions' : 'Connect Gmail metadata'}
+            </h2>
             <p>
-              To calculate your cleanup score and sort inbox clutter, MailTriage needs temporary Gmail metadata access.
-              It does not fetch message bodies, snippets, or attachment files.
+              {pendingAccess === 'actions'
+                ? 'MailTriage can request Gmail modify permission now so Archive and Trash are ready when you start selecting emails. It will still only act on messages you explicitly choose and confirm.'
+                : 'To calculate your cleanup score and sort inbox clutter, MailTriage needs temporary Gmail metadata access. It does not fetch message bodies, snippets, or attachment files.'}
             </p>
             <div className={styles.permissionFacts}>
-              <span>Subjects, dates, labels, sender domains</span>
+              <span>{pendingAccess === 'actions' ? 'Includes metadata scan access' : 'Subjects, dates, labels, sender domains'}</span>
               <span>Processed in-memory for your dashboard</span>
-              <span>Archive/trash permission requested later</span>
+              <span>{pendingAccess === 'actions' ? 'Archive/trash only after your confirmation' : 'Archive/trash permission requested later'}</span>
             </div>
             <div className={styles.modalActions}>
               <button className={styles.secondaryBtn} onClick={() => setPendingAccess(null)}>
                 Not now
               </button>
-              <button className={styles.loginButton} onClick={() => startOAuth('gmail')} disabled={loading}>
+              <button className={styles.loginButton} onClick={() => startOAuth(pendingAccess)} disabled={loading}>
                 Continue to Google
               </button>
             </div>

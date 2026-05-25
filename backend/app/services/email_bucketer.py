@@ -142,9 +142,21 @@ class EmailBucketer:
         elif age_days >= 365:
             age_group = '1y_plus'
             age_label = '1+ year old'
+        elif age_days >= 180:
+            age_group = '6mo_plus'
+            age_label = '6+ months old'
+        elif age_days >= 90:
+            age_group = '90d_plus'
+            age_label = '90+ days old'
+        elif age_days >= 30:
+            age_group = '30d_plus'
+            age_label = '30+ days old'
+        elif age_days >= 7:
+            age_group = '7d_plus'
+            age_label = '7+ days old'
         else:
-            age_group = 'under_1y'
-            age_label = 'Under 1 year'
+            age_group = 'fresh'
+            age_label = 'Fresh'
 
         return {
             'age_days': age_days,
@@ -205,10 +217,67 @@ class EmailBucketer:
             return email_part.split('@')[-1].strip().lower()
         return ''
 
+    @staticmethod
+    def safety_signal(bucket, tags, age_info):
+        """Suggest a user-facing cleanup decision using metadata only."""
+        tag_set = set(tags)
+        age_group = age_info.get('age_group')
+        sensitive_buckets = {'government_id', 'finance', 'legal', 'institutional', 'travel'}
+        review_buckets = {'attachments', 'latest_jobs', 'jobs', 'shopping_receipts', 'educational', 'shopping'}
+        stale_groups = {'90d_plus', '6mo_plus', '1y_plus', '2y_plus', '3y_plus', '5y_plus'}
+
+        if bucket in sensitive_buckets or {'government_id', 'finance', 'bank', 'payment', 'legal'} & tag_set:
+            return {
+                'safety_level': 'sensitive',
+                'safety_label': 'Sensitive',
+                'action_hint': 'review_later',
+                'safety_reason': 'May contain identity, finance, legal, travel, or institutional records.',
+            }
+
+        if bucket == 'otp_security' and age_group != 'fresh':
+            return {
+                'safety_level': 'safe',
+                'safety_label': 'Safe to trash',
+                'action_hint': 'trash',
+                'safety_reason': 'Older OTP/security-code email is usually disposable.',
+            }
+
+        if bucket == 'spam_junk':
+            return {
+                'safety_level': 'safe',
+                'safety_label': 'Safe to trash',
+                'action_hint': 'trash',
+                'safety_reason': 'Spam-like metadata detected.',
+            }
+
+        if bucket in {'promotions', 'newsletters', 'social', 'updates'} and age_group in stale_groups:
+            return {
+                'safety_level': 'safe',
+                'safety_label': 'Safe cleanup',
+                'action_hint': 'archive',
+                'safety_reason': 'Stale low-risk category email.',
+            }
+
+        if bucket in review_buckets or 'attachment' in tag_set:
+            return {
+                'safety_level': 'review',
+                'safety_label': 'Review later',
+                'action_hint': 'review_later',
+                'safety_reason': 'Could be useful, transactional, or context-dependent.',
+            }
+
+        return {
+            'safety_level': 'review',
+            'safety_label': 'Review',
+            'action_hint': 'review_later',
+            'safety_reason': 'Not enough metadata confidence for bulk trash.',
+        }
+
     @classmethod
     def result(cls, bucket, reason, email, subject, sender, sent_at, tags):
         age_info = cls.get_age_info(email, sent_at)
         tags = sorted(set(tags + [age_info['age_group']]))
+        safety_info = cls.safety_signal(bucket, tags, age_info)
         return {
             'bucket': bucket,
             'reason': reason,
@@ -218,6 +287,7 @@ class EmailBucketer:
             'sent_at': sent_at,
             'size_estimate': email.get('sizeEstimate', 0),
             'tags': tags,
+            **safety_info,
             **age_info,
         }
     
@@ -332,5 +402,14 @@ class EmailBucketer:
             bucketed = cls.bucket_email(email)
             bucket_name = bucketed['bucket']
             buckets[bucket_name].append(bucketed)
+
+        cleanup_first = {'otp_security', 'spam_junk', 'promotions', 'newsletters', 'social', 'updates'}
+        attention_first = {'latest_jobs', 'finance', 'government_id', 'legal', 'travel'}
+
+        for bucket_name, items in buckets.items():
+            if bucket_name in cleanup_first:
+                items.sort(key=lambda item: item.get('age_days') if item.get('age_days') is not None else -1, reverse=True)
+            elif bucket_name in attention_first:
+                items.sort(key=lambda item: item.get('age_days') if item.get('age_days') is not None else 10**9)
         
         return buckets
